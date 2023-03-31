@@ -18,33 +18,35 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r, echo=F, warning=F, message=F }
-library(ggplot2)
-library(ggpubr)
-library(tidyr)
-library(dplyr)
-library(reshape)
-library(tibble)
-library(purrr)
-library(tdr)
-#library(faux)
-library(ggridges)
-library(MASS)
-library(tidybayes)
-library(brms)
-library(marginaleffects)
-library(ape)
-library(caper)
-library(geiger)
-library(RColorBrewer)
-library(nlme)
-library(phytools)
-library(robustHD)
-library(emmeans)
-library(loo)
-library("corpcor")
-library(viridis)
-library(viridisLite)
-library(caret)
+pacman::p_load(
+ggplot2,
+ggpubr,
+tidyr,
+dplyr,
+reshape,
+tibble,
+purrr,
+tdr,
+#faux,
+ggridges,
+MASS,
+tidybayes,
+brms,
+marginaleffects,
+ape,
+caper,
+geiger,
+RColorBrewer,
+nlme,
+phytools,
+robustHD,
+emmeans,
+loo,
+"corpcor",
+viridis,
+viridisLite,
+caret)
+
 theme_set(theme_classic())
 #Load functions
 # sapply(list.files(pattern="[.]R$", path="~/Dropbox/Research/Dino_metabolics/functions", full.names=TRUE), source)
@@ -73,6 +75,66 @@ tree.tt <- ape::read.tree(file=paste(getwd(), "/data/extant.nwk", sep=""))
 This markdown file is meant to illustrate workflow (at a high level) for our reanalysis of @wiemann2022fossil. Broadly, we correct a single erroneous calibration point and re analyse the data following their presumed workflow. We then use Bayesian logistic regression to appropriately interrogate their data for a metabolic signal.
 
 Before we dive to deeply into calculated M rates, lets look at the three spectral frequencies and body size using a few multidimensional clustering algorithms to assess and separation in the "raw" lipo-oxidation signatures.
+# RAW spectra
+```{r}
+
+library(readr)
+disc_fossil <- read_csv("data/fossil_raw_spectra.csv")
+
+mds.plot <- disc_fossil%>%
+  unite('id', 1:3, remove = T)%>%
+  column_to_rownames(., var=c("id"))
+
+mds <- mds.plot%>%
+  dist() %>%          
+  cmdscale() %>%
+  as_tibble()
+colnames(mds) <- c("Dim.1", "Dim.2")
+mds$Taxon_name <- as.factor(disc_fossil$`Taxon Name`)
+mds$Thermy <- as.factor(disc_fossil$Thermy)
+
+ggscatter(mds, x = "Dim.1", y = "Dim.2",
+          fill="Thermy",
+          label = "Taxon_name",
+          size = 3,
+          shape=21,
+          ellipse = T,
+          ellipse.type = "convex",
+          repel = TRUE,
+          font.label = c(8, "italic"),
+          palette = c("grey88", "goldenrod", "dodgerblue3", "red3", "grey22", "grey55", "white"))
+
+```
+
+# K -means raw
+```{r, `k-means_extant`}
+
+
+mds <- mds.plot%>%
+  dist() %>%          
+  cmdscale() %>%
+  as_tibble()
+colnames(mds) <- c("Dim.1", "Dim.2")
+
+clust <- kmeans(mds,centers = 4, nstart = 25, )$cluster %>%
+  as.factor()
+mds <- mds %>%
+  mutate(groups = clust)
+
+# Plot and color by groups
+ggscatter(mds, x = "Dim.1", y = "Dim.2", 
+          label = disc_fossil$`Taxon Name`,
+          fill = "groups",
+          palette = c("dodgerblue","red3", "grey", "grey33"),
+          size = 3,
+          shape=21,
+          ellipse = TRUE,
+          font.label = c(8, "plain"),
+          ellipse.type = "convex",
+          repel = TRUE)
+
+
+```
 
 # MDS Extant
 ```{r, `MDS-extant`}
